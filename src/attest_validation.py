@@ -163,7 +163,7 @@ def extract_sagsbehandler_dq(value: object) -> str | None:
     """
     Extract the trailing DQ number from the displayed caseworker name.
 
-    :param value: Caseworker field, e.g. "Fornavn Efternavn - DQ0000"
+    :param value: Caseworker field, e.g. "Fornavn Efternavn - DQ00000"
     :return: Uppercase DQ number, or None if the format is invalid
     """
     match = _match_sagsbehandler(value)
@@ -174,7 +174,7 @@ def extract_sagsbehandler_name(value: object) -> str | None:
     """
     Extract the caseworker name from the displayed caseworker field.
 
-    :param value: Caseworker field, e.g. "Fornavn Efternavn - DQ0000"
+    :param value: Caseworker field, e.g. "Fornavn Efternavn - DQ00000"
     :return: Name portion, or None if the format is invalid
     """
     match = _match_sagsbehandler(value)
