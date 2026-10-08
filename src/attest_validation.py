@@ -153,8 +153,7 @@ def validate_attest_types(
     if len(attest_types) != len(set(attest_types)):
         errors.append("attestType must not contain duplicate types.")
 
-    if any(type(value) is not int
-           or value not in valid_types for value in attest_types):
+    if any(type(value) is not int or value not in valid_types for value in attest_types):
         errors.append("attestType contains invalid types.")
 
     return errors
