@@ -78,7 +78,7 @@ def test_get_connection_failure(mock_create_engine):
 
 
 @patch('sqlalchemy.create_engine')
-def test_get_connection_no_engine_failure():
+def test_get_connection_no_engine_failure(mock_create_engine):
     client = DatabaseClient(
         'mssql', 'database', 'username', 'password', 'host')
     client.engine = None

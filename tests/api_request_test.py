@@ -247,5 +247,5 @@ def test_make_request_wrong_headers():
     api_client.logger = MagicMock()
     assert api_client.make_request(headers='not a dict') is None
     api_client.logger.error.assert_called_once_with(
-        "Request failed error: <class 'ValueError'> Headers must be a "
+        "Request failed with error: <class 'ValueError'> Headers must be a "
         "dictionary")

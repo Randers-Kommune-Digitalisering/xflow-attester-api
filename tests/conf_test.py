@@ -65,7 +65,7 @@ def test_create_app_sftp_unavailable(mock_sftp_client, mock_database_client):
 @patch('main.refresh_authorized_dq_numbers')
 @patch('main.DatabaseClient')
 @patch('main.SFTPClient')
-def test_server_errors_are_counted():
+def test_server_errors_are_counted(mock_sftp_client, mock_database_client, mock_refresh):
     app = create_app()
 
     @app.get('/fail')
