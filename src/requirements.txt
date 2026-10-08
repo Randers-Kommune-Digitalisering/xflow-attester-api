@@ -1,0 +1,12 @@
+Flask==3.0.3
+mariadb
+paramiko==3.4.0
+pymssql
+py-healthcheck
+pysftp
+psycopg2
+prometheus-client
+python-dotenv
+requests==2.31.0
+requests-pkcs12==1.24
+SQLAlchemy
