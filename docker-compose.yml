@@ -1,68 +1,41 @@
-version: "3.9"
 services:
+  external-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: attester_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d attester_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   app:
     build: src
-    read_only: true
-    networks:
-      - app_network
+    environment:
+      FLASK_ENV: prod
+      PORT: "8080"
+      ATTEST_DB_TYPE: postgresql
+      ATTEST_DB_HOST: external-postgres
+      ATTEST_DB_NAME: attester_db
+      ATTEST_DB_USERNAME: user
+      ATTEST_DB_PASSWORD: pass
+      ATTEST_DB_PORT: "5432"
+      SFTP_HOST: "${SFTP_HOST:?Set SFTP_HOST in .env}"
+      SFTP_USERNAME: "${SFTP_USERNAME:?Set SFTP_USERNAME in .env}"
+      SFTP_PASSWORD: "${SFTP_PASSWORD:-}"
+      SFTP_KEY_BASE64: "${SFTP_KEY_BASE64:-}"
+      SFTP_KEY_PASS: "${SFTP_KEY_PASS:-}"
+    depends_on:
+      external-postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
-    environment:
-      DEBUG: True
-      # DB_USER: user
-      # DB_USER: root
-      # DB_PASS: pass
-      # DB_HOST: db
-      # DB_PORT: 5432
-      # DB_PORT: 3306
-      # DB_DATABASE: demo
 
-    # Add a volumne if there is a need to write files
-    # volumes:
-    #     - ./<local dir>:<container dir full path> E.g. /mydir/myfiles
-
-  #   depends_on: 
-  #     db:
-  #       condition: service_healthy
-
-  # db:
-  #   image: postgres:16.1
-  #   restart: always
-  #   #user: postgres
-  #   # Open ports for testing
-  #   ports:
-  #     - 5432:5432
-  #   environment:
-  #     POSTGRES_PASSWORD: pass
-  #     POSTGRES_USER: user
-  #     POSTGRES_DB: demo
-  #   healthcheck:
-  #     test: [ "CMD-SHELL", "pg_isready -q -U user -d demo" ]
-  #     start_period: 5s
-  #     interval: 5s
-  #     timeout: 5s
-  #     retries: 55
-  #   networks:
-  #     - app_network
-
-  # db:
-  #   image: mariadb:10.6.11
-  #   restart: always
-  #   # Open ports for testing
-  #   ports:
-  #   - 3306:3306
-  #   environment:
-  #     MARIADB_ROOT_PASSWORD: pass
-  #     MARIADB_DATABASE: demo
-  #   healthcheck:
-  #     test: mysqladmin ping -h 127.0.0.1 -u root --password=pass
-  #     start_period: 5s
-  #     interval: 5s
-  #     timeout: 5s
-  #     retries: 55
-  #   networks:
-  #     - app_network
-
-networks: 
-  app_network:
-    name: app_network
+volumes:
+  postgres_data:

@@ -3,9 +3,11 @@ mariadb
 pymssql
 py-healthcheck
 pysftp
+# pysftp imports DSSKey, which was removed in paramiko 4.0
+paramiko<4.0
 psycopg2
 prometheus-client
 python-dotenv
 requests==2.31.0
 requests-pkcs12==1.24
-SQLAlchemy
+SQLAlchemy>=2.0
