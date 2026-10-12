@@ -16,16 +16,6 @@ os.environ.setdefault("FLASK_ENV", "dev")
 AUTHORIZATION_CSV = "Lokalt brugernavn;Rolle\nDQ12345;Leder\nDQ54321;Medarbejder\n"
 
 
-def make_payload(sagsbehandler: str) -> dict[str, object]:
-    return {
-        "sagsbehandler": sagsbehandler,
-        "medarbejderCPR": "010190-1234",
-        "attestType": "0, 1",
-        "attestSubType": [{"attestType": 0, "subType": 1}],
-        "samtykke": True,
-    }
-
-
 @pytest.fixture()
 def app() -> Iterator[Flask]:
     engine = sqlalchemy.create_engine("sqlite://", poolclass=StaticPool)
@@ -131,3 +121,13 @@ def test_receive_data_stores_cpr_without_hyphen(app: Flask, client: FlaskClient,
         ).scalar_one()
 
     assert stored_cpr == "0101901234"
+
+
+def make_payload(sagsbehandler: str) -> dict[str, object]:
+    return {
+        "sagsbehandler": sagsbehandler,
+        "medarbejderCPR": "010190-1234",
+        "attestType": "0, 1",
+        "attestSubType": [{"attestType": 0, "subType": 1}],
+        "samtykke": True,
+    }
