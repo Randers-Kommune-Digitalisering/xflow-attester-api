@@ -9,8 +9,7 @@ from rkdigi import DatabaseManager
 from attest_database import refresh_authorized_dq_numbers
 from model import Base
 from utils.config import get_config_class_path
-from utils.logging import (count_error, http_error_counter,
-                           set_logging_configuration)
+from utils.logging import (count_error, http_error_counter, set_logging_configuration)
 from utils.sftp import SFTPClient, SFTPError
 
 AUTHORIZATION_CSV_PATH = "/Brugeradministration-da.csv"

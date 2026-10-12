@@ -79,12 +79,10 @@ class AttestationOrder(Base):
 
     __tablename__ = "attestation_order"
     __table_args__ = (
-        UniqueConstraint("request_id", "attest_type",
-                         name="uq_attestation_order_request_type"),
+        UniqueConstraint("request_id", "attest_type", name="uq_attestation_order_request_type"),
     )
     order_id = Column(String(36), primary_key=True, default=_new_uuid)
-    request_id = Column(String(36),
-                        ForeignKey("attestation_request.request_id", ondelete="CASCADE"), nullable=False, index=True)
+    request_id = Column(String(36), ForeignKey("attestation_request.request_id", ondelete="CASCADE"), nullable=False, index=True)
     attest_type = Column(Integer, nullable=False)
     attest_subtype = Column(Integer)
     status = Column(OrderStatusType, nullable=False, index=True)
