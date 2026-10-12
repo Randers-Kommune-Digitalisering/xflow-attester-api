@@ -94,7 +94,6 @@ Miljøvariabler (secrets ligger i Bitwarden). Lokalt lægges de i en `.env` fil 
 * Gyldige subtype-koder er ikke fastlagt endnu (`VALID_SUBTYPES_BY_TYPE` i [attest_validation.py](src/attest_validation.py)).
 * Autorisationslisten opdateres kun ved opstart.
 * Bekræftelse/afvisning sendes endnu ikke til rekvirenten – kun som HTTP-svar.
-* SFTP-serverens host key verificeres ikke.
 
 
 ### Logning
