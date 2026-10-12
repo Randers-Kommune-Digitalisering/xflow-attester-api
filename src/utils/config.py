@@ -28,6 +28,8 @@ class Config:
     SFTP_USERNAME = os.getenv("SFTP_USERNAME", "")
     SFTP_HOST_KEY = os.getenv("SFTP_HOST_KEY", "")
     SFTP_PASSWORD = os.getenv("SFTP_PASSWORD")
+    SFTP_KEY_BASE64 = os.getenv("SFTP_KEY_BASE64", "")
+    SFTP_KEY_PASSPHRASE = os.getenv("SFTP_KEY_PASSPHRASE", "")
 
 
 # DevConfig will be used when FLASK_ENV=dev or is not set

@@ -54,6 +54,8 @@ def _read_authorization_csv(config: Mapping[str, object]) -> str:
         username=config["SFTP_USERNAME"],
         host_key=config["SFTP_HOST_KEY"],
         password=config["SFTP_PASSWORD"],
+        key_base64=config["SFTP_KEY_BASE64"],
+        key_pass=config["SFTP_KEY_PASSPHRASE"],
     )
     sftp_connection = sftp_client.get_connection()
     if sftp_connection is None:

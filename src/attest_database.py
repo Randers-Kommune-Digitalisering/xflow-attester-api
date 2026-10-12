@@ -3,6 +3,7 @@
 import csv
 import datetime
 import uuid
+import logging
 from io import StringIO
 
 from rkdigi import DatabaseManager
@@ -14,6 +15,8 @@ from attest_validation import (extract_sagsbehandler_dq,
 from model import (AttestationOrder, AttestationRequest,
                    AuthorizedSagsbehandler, OrderEvent, OrderStatus,
                    SagsbehandlerRoles)
+
+logger = logging.getLogger(__name__)
 
 CSV_DQ_COLUMN = "Lokalt brugernavn"
 CSV_ROLE_COLUMN = "Rolle"
@@ -54,6 +57,7 @@ def refresh_authorized_dq_numbers(
     except SQLAlchemyError:
         raise
 
+    logger.info("Refreshed authorized DQ numbers: %d", len(roles_by_dq))
     return len(roles_by_dq)
 
 
