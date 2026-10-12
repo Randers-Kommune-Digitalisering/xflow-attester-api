@@ -69,7 +69,6 @@ Tabellerne oprettes automatisk ved opstart.
 * Gyldige subtype-koder er ikke fastlagt endnu (`VALID_SUBTYPES_BY_TYPE` i [attest_validation.py](src/attest_validation.py)).
 * Autorisationslisten opdateres kun ved opstart.
 * Bekræftelse/afvisning sendes endnu ikke til rekvirenten – kun som HTTP-svar.
-* SFTP-serverens host key verificeres ikke.
 
 ## Afhængigheder
 
@@ -90,8 +89,36 @@ Tabellerne oprettes automatisk ved opstart.
 | `ATTEST_DB_NAME` | Databasenavn |
 | `ATTEST_DB_USERNAME` / `ATTEST_DB_PASSWORD` | Database login |
 | `SFTP_HOST` / `SFTP_USERNAME` | SFTP server |
+| `SFTP_HOST_KEY` | SFTP-serverens host key som `<key-type> <base64>`. Påkrævet – forbindelsen afvises ved mismatch. Se [SFTP host key](#sftp-host-key) |
 | `SFTP_PASSWORD` | SFTP kodeord – eller brug nøgle herunder |
-| `SFTP_KEY_BASE64` / `SFTP_KEY_PASS` | Base64-kodet SSH nøgle og evt. kodeord (valgfri) |
+
+### SFTP host key
+
+App'en stoler kun på den host key, der er angivet i `SFTP_HOST_KEY`. Hent nøglen med `ssh-keyscan` (findes i OpenSSH på både Linux/macOS og Windows):
+
+```bash
+ssh-keyscan -t ed25519 sftp.randers.dk
+```
+
+Outputtet har formatet `<host> <key-type> <base64>`, fx:
+
+```text
+sftp.randers.dk ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA...
+```
+
+Sæt `SFTP_HOST_KEY` til alt **efter** hostnavnet:
+
+```bash
+SFTP_HOST_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA...
+```
+
+Verificér nøglen, før den tages i brug. `ssh-keyscan` kan selv blive udsat for man-in-the-middle, så sammenlign fingerprintet med det, driftsansvarlig for SFTP-serveren oplyser via en anden kanal:
+
+```bash
+ssh-keyscan -t ed25519 sftp.randers.dk | ssh-keygen -lf -
+```
+
+Hvis serverens host key udskiftes, skal `SFTP_HOST_KEY` opdateres (lokalt i `.env` og i Bitwarden/deployment-secrets), ellers starter app'en ikke.
 
 ## Udvikling
 
@@ -136,6 +163,7 @@ Notering af eventuelle hard-codede værdier, og hvordan værdierne kan ændres.
     Bemærk:
 
     - `.env` ignoreres af git.
+    - `SFTP_HOST_KEY` hentes som beskrevet under [SFTP host key](#sftp-host-key).
     - Hvis du tilføjer nye miljøvariabler, skal du også tilføje dem i `src/utils/config.py`.
 
 4) Kør applikationen:

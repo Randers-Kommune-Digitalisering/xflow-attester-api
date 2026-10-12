@@ -17,7 +17,7 @@ class Config:
     POD_NAME = os.getenv("POD_NAME", "pod_name_not_set")
     PORT = int(os.getenv("PORT", "8080"))
 
-    ATTEST_DB_TYPE = os.getenv("ATTEST_DB_TYPE", "mssql").strip()
+    ATTEST_DB_TYPE = os.getenv("ATTEST_DB_TYPE", "postgres").strip()
     ATTEST_DB_HOST = os.getenv("ATTEST_DB_HOST", "").strip()
     ATTEST_DB_NAME = os.getenv("ATTEST_DB_NAME", "").strip()
     ATTEST_DB_USERNAME = os.getenv("ATTEST_DB_USERNAME", "").strip()
@@ -26,9 +26,8 @@ class Config:
 
     SFTP_HOST = os.getenv("SFTP_HOST", "")
     SFTP_USERNAME = os.getenv("SFTP_USERNAME", "")
+    SFTP_HOST_KEY = os.getenv("SFTP_HOST_KEY", "")
     SFTP_PASSWORD = os.getenv("SFTP_PASSWORD")
-    SFTP_KEY_BASE64 = os.getenv("SFTP_KEY_BASE64")
-    SFTP_KEY_PASS = os.getenv("SFTP_KEY_PASS")
 
 
 # DevConfig will be used when FLASK_ENV=dev or is not set

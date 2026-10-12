@@ -57,7 +57,7 @@ class AuthorizedSagsbehandler(Base):
     """Caseworker allowed to request attestations, loaded from the admin CSV."""
 
     __tablename__ = "authorized_sagsbehandler"
-    dq_number = Column(String(7), primary_key=True)
+    dq_number = Column(String(16), primary_key=True)
     role = Column(SagsbehandlerRoleType, nullable=False)
 
 
@@ -66,7 +66,7 @@ class AttestationRequest(Base):
 
     __tablename__ = "attestation_request"
     request_id = Column(String(36), primary_key=True, default=_new_uuid)
-    requester_dq = Column(String(7), nullable=False)
+    requester_dq = Column(String(16), nullable=False)
     requester_name = Column(String(255), nullable=False)
     subject_cpr = Column(String(10), nullable=False)
     is_approved = Column(Boolean, nullable=False)

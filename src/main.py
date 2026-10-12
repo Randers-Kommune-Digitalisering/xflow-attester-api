@@ -33,7 +33,7 @@ def create_app(config_object: str = "utils.config.DevConfig") -> Flask:
     # Creates missing tables from the models after verifying the connection.
     database_manager = DatabaseManager(
         profile_name="attest_db",
-        db_type="postgres",
+        db_type=app.config["ATTEST_DB_TYPE"],
         database=app.config["ATTEST_DB_NAME"],
         username=app.config["ATTEST_DB_USERNAME"],
         password=app.config["ATTEST_DB_PASSWORD"],
@@ -87,9 +87,8 @@ def _read_authorization_csv(app: Flask) -> str:
     sftp_client = SFTPClient(
         host=app.config["SFTP_HOST"],
         username=app.config["SFTP_USERNAME"],
+        host_key=app.config["SFTP_HOST_KEY"],
         password=app.config["SFTP_PASSWORD"],
-        key_base64=app.config["SFTP_KEY_BASE64"],
-        key_pass=app.config["SFTP_KEY_PASS"],
     )
     sftp_connection = sftp_client.get_connection()
     if sftp_connection is None:

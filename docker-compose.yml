@@ -20,7 +20,7 @@ services:
     environment:
       FLASK_ENV: prod
       PORT: "8080"
-      ATTEST_DB_TYPE: postgresql
+      ATTEST_DB_TYPE: postgres
       ATTEST_DB_HOST: external-postgres
       ATTEST_DB_NAME: attester_db
       ATTEST_DB_USERNAME: user
@@ -28,9 +28,8 @@ services:
       ATTEST_DB_PORT: "5432"
       SFTP_HOST: "${SFTP_HOST:?Set SFTP_HOST in .env}"
       SFTP_USERNAME: "${SFTP_USERNAME:?Set SFTP_USERNAME in .env}"
+      SFTP_HOST_KEY: "${SFTP_HOST_KEY:?Set SFTP_HOST_KEY in .env}"
       SFTP_PASSWORD: "${SFTP_PASSWORD:-}"
-      SFTP_KEY_BASE64: "${SFTP_KEY_BASE64:-}"
-      SFTP_KEY_PASS: "${SFTP_KEY_PASS:-}"
     depends_on:
       external-postgres:
         condition: service_healthy
