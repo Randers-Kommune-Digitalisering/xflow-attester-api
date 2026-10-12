@@ -69,10 +69,10 @@ def test_extract_sagsbehandler_invalid(value: object) -> None:
 
 
 @pytest.mark.parametrize("attest_types, subtypes", [
-    ([0], [{"attestType": 0, "subType": 1}]),
-    ([0, 1], [{"attestType": 0, "subType": 1}]),
+    ([0], [{"attestType": 0, "subType": 3}]),
+    ([0, 1], [{"attestType": 0, "subType": 3}]),
     ([0, 1, 2], [
-        {"attestType": 0, "subType": 1}, {"attestType": 2, "subType": 2}]),
+        {"attestType": 0, "subType": 1}, {"attestType": 2, "subType": 1}]),
     ([1], []),
 ])
 def test_validate_attest_request_valid_combinations(attest_types: list[int], subtypes: list[dict[str, int]]) -> None:
