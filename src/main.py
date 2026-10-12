@@ -1,18 +1,14 @@
 """
 Main entry point for the Flask application.
 """
-import paramiko
 from flask import Flask, Response, got_request_exception, jsonify, request
 from prometheus_client import generate_latest
 from rkdigi import DatabaseManager
 
-from attest_database import refresh_authorized_dq_numbers
+from authorization import refresh_authorization
 from model import Base
 from utils.config import get_config_class_path
 from utils.logging import (count_error, http_error_counter, set_logging_configuration)
-from utils.sftp import SFTPClient, SFTPError
-
-AUTHORIZATION_CSV_PATH = "/Brugeradministration-da.csv"
 
 
 def create_app(config_object: str = "utils.config.DevConfig") -> Flask:
@@ -30,8 +26,6 @@ def create_app(config_object: str = "utils.config.DevConfig") -> Flask:
     set_logging_configuration(debug=debug)
 
     try:
-        authorization_csv = _read_authorization_csv(app)
-
         db_port = app.config["ATTEST_DB_PORT"]
         # Creates missing tables from the models after verifying the connection.
         database_manager = DatabaseManager(
@@ -45,7 +39,7 @@ def create_app(config_object: str = "utils.config.DevConfig") -> Flask:
             base_model=Base,
         )
         app.extensions["database_manager"] = database_manager
-        refresh_authorized_dq_numbers(authorization_csv, database_manager)
+        refresh_authorization(app.config, database_manager)
     except Exception as error:
         count_error(error)
         raise
@@ -94,36 +88,6 @@ def _on_request_exception(sender: Flask, exception: Exception, **extra: object) 
     :param **extra: Additional signal arguments (unused).
     """
     count_error(exception)
-
-
-def _read_authorization_csv(app: Flask) -> str:
-    """
-    Download the user administration CSV from the SFTP server.
-
-    :param app: The Flask application holding the SFTP configuration.
-    :return: The decoded CSV content.
-    :raises SFTPError: If the SFTP authorization server cannot be reached or read.
-    :return: The decoded CSV content.
-    """
-    sftp_client = SFTPClient(
-        host=app.config["SFTP_HOST"],
-        username=app.config["SFTP_USERNAME"],
-        host_key=app.config["SFTP_HOST_KEY"],
-        password=app.config["SFTP_PASSWORD"],
-    )
-    sftp_connection = sftp_client.get_connection()
-    if sftp_connection is None:
-        raise SFTPError("Unable to connect to the SFTP authorization server.")
-
-    try:
-        with sftp_connection.open(AUTHORIZATION_CSV_PATH, "rb") as csv_file:
-            csv_bytes = csv_file.read()
-    except (OSError, paramiko.SSHException) as error:
-        raise SFTPError("Unable to read the authorization CSV from the SFTP server.") from error
-    finally:
-        sftp_connection.close()
-
-    return csv_bytes.decode("utf-16")
 
 
 # WSGI entrypoint for `gunicorn --chdir src main:app`

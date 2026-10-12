@@ -7,6 +7,7 @@ from io import StringIO
 
 from rkdigi import DatabaseManager
 from sqlalchemy import delete
+from sqlalchemy.exc import SQLAlchemyError
 
 from attest_validation import (extract_sagsbehandler_dq,
                                extract_sagsbehandler_name)
@@ -31,19 +32,27 @@ def refresh_authorized_dq_numbers(
     :param csv_content: administration CSV content as a string
     :param database_manager: Manager connected to the application database
     :return: Number of unique authorized DQ numbers
+    :raises ValueError: If the CSV lacks required columns or authorized rows
+    :raises SQLAlchemyError: If the database replacement fails
     """
     # Validate the file before opening the transaction
     # Bad input cannot clear the list.
-    roles_by_dq = parse_authorized_dq_numbers(csv_content)
+    try:
+        roles_by_dq = parse_authorized_dq_numbers(csv_content)
+    except ValueError:
+        raise
 
     # Keep the full replacement atomic
     # A failed insert rolls back the deletion.
-    with database_manager.get_session() as session, session.begin():
-        session.execute(delete(AuthorizedSagsbehandler))
-        session.add_all(
-            AuthorizedSagsbehandler(dq_number=dq_number, role=role)
-            for dq_number, role in sorted(roles_by_dq.items())
-        )
+    try:
+        with database_manager.get_session() as session, session.begin():
+            session.execute(delete(AuthorizedSagsbehandler))
+            session.add_all(
+                AuthorizedSagsbehandler(dq_number=dq_number, role=role)
+                for dq_number, role in sorted(roles_by_dq.items())
+            )
+    except SQLAlchemyError:
+        raise
 
     return len(roles_by_dq)
 

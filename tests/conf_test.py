@@ -8,8 +8,11 @@ import pytest
 import sqlalchemy
 from flask import Flask
 from flask.testing import FlaskClient
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+
+from utils.sftp import SFTPError
 
 os.environ.setdefault("FLASK_ENV", "dev")
 
@@ -56,6 +59,27 @@ def test_metrics(client: FlaskClient) -> None:
     response = client.get("/metrics")
     assert response.status_code == 200
     assert b"http_server_errors_total" in response.data
+
+
+@pytest.mark.parametrize("error, status, message", [
+    (SFTPError("sftp detail"), 502, "Unable to fetch authorization data."),
+    (ValueError("csv detail"), 502, "Invalid authorization data."),
+    (SQLAlchemyError("db detail"), 503, "Unable to update authorization data."),
+    (RuntimeError("internal detail"), 500, "Unable to refresh authorization data."),
+])
+def test_refresh_authorization_handles_errors(
+    client: FlaskClient,
+    error: Exception,
+    status: int,
+    message: str,
+) -> None:
+    with mock.patch("api_endpoints.refresh_authorized_sagsbehandlere", side_effect=error), \
+            mock.patch("api_endpoints.count_error") as count_error:
+        response = client.post("/api/refresh_authorization")
+
+    assert response.status_code == status
+    assert response.get_json() == {"error": message}
+    count_error.assert_called_once_with(error)
 
 
 @pytest.mark.parametrize("sagsbehandler, approval_status, is_approved", [
