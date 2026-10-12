@@ -7,13 +7,37 @@ import sys
 from wsgiref.simple_server import WSGIRequestHandler
 
 from prometheus_client import Counter  # , Gauge, Summary
+from sqlalchemy.exc import SQLAlchemyError
+
+from utils.sftp import SFTPError
 
 # Prometheus metrics
-error_counter = Counter(
+http_error_counter = Counter(
     name="http_server_errors",
     documentation="Number of 5xx responses",
     labelnames=["endpoint", "status"],
 )
+error_counter = Counter(
+    name="error_count",
+    documentation="Number of errors encountered",
+    labelnames=["error_type"],
+)
+
+
+def count_error(error: BaseException) -> None:
+    """
+    Increment the error counter with a label based on the exception type.
+
+    :param error: The exception that was raised.
+    """
+    if isinstance(error, SQLAlchemyError):
+        error_type = "db"
+    elif isinstance(error, SFTPError):
+        error_type = "sftp"
+    else:
+        error_type = "python"
+
+    error_counter.labels(error_type=error_type).inc()
 
 
 def set_logging_configuration(debug: bool = False) -> None:

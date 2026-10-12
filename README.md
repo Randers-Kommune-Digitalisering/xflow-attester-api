@@ -27,7 +27,7 @@ flowchart LR
 |---|---|---|
 | POST | `/api/receive_data` | Modtager bestilling fra X-Flow |
 | GET | `/healthz` | Health check – returnerer `{"status": "ok"}` |
-| GET | `/metrics` | Prometheus metrics (bl.a. `http_server_errors_total`) |
+| GET | `/metrics` | Prometheus metrics (bl.a. `http_server_errors_total` og `error_count_total{error_type="db|sftp|python"}`) |
 
 ### POST /api/receive_data
 

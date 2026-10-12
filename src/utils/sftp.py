@@ -10,6 +10,10 @@ import paramiko
 import pysftp
 
 
+class SFTPError(Exception):
+    """Raised when communication with the SFTP server fails."""
+
+
 class SFTPClient:
     """
     Open SFTP connections using password and/or base64-encoded RSA key.
