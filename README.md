@@ -37,8 +37,8 @@ flowchart LR
     "medarbejderCPR": "010190-1234",
     "attestType": "0, 1, 2",
     "attestSubType": [
-        {"attestType": 0, "subType": 1},
-        {"attestType": 2, "subType": 3}
+        {"attestType": 0, "subType": 3},
+        {"attestType": 2, "subType": 1}
     ],
     "samtykke": true
 }
@@ -66,7 +66,6 @@ Tabellerne oprettes automatisk ved opstart.
 
 ### Kendte begrænsninger / TODO
 
-* Gyldige subtype-koder er ikke fastlagt endnu (`VALID_SUBTYPES_BY_TYPE` i [attest_validation.py](src/attest_validation.py)).
 * Autorisationslisten opdateres kun ved opstart.
 * Bekræftelse/afvisning sendes endnu ikke til rekvirenten – kun som HTTP-svar.
 

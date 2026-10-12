@@ -1,6 +1,17 @@
 """Validation helpers for incoming attestation requests."""
 
 import re
+from collections.abc import Set
+from enum import IntEnum
+
+
+class AttestType(IntEnum):
+    """Attestation types as sent in the request's attestType field."""
+
+    PUBLIC_CRIMINAL_RECORD = 0  # Offentlig straffeattest
+    PRIVATE_CRIMINAL_RECORD = 1  # Privat straffeattest
+    CHILD_CERTIFICATE = 2  # Børneattest
+
 
 REQUIRED_ATTEST_REQUEST_FIELDS = [
     "sagsbehandler",
@@ -9,11 +20,10 @@ REQUIRED_ATTEST_REQUEST_FIELDS = [
     "attestSubType",
     "samtykke",
 ]
-VALID_ATTEST_TYPES = {0, 1, 2}
-# TODO: Replace the empty sets with X-Flow's allowed subtype codes
-VALID_SUBTYPES_BY_TYPE: dict[int, set[int]] = {
-    0: set(),
-    2: set(),
+VALID_ATTEST_TYPES = frozenset(AttestType)
+VALID_SUBTYPES_BY_TYPE: dict[AttestType, frozenset[int]] = {
+    AttestType.PUBLIC_CRIMINAL_RECORD: frozenset({0, 1, 2, 3}),
+    AttestType.CHILD_CERTIFICATE: frozenset({0, 1}),
 }
 
 
@@ -85,10 +95,12 @@ def validate_attest_request(
             errors.append(f"attestSubType entry {index} is not an integer.")
             continue
 
-        if selected_type not in (0, 2):
+        if selected_type not in VALID_SUBTYPES_BY_TYPE:
+            allowed_types = " or ".join(
+                str(attest_type.value) for attest_type in VALID_SUBTYPES_BY_TYPE)
             errors.append(
                 f"attestSubType entry {index} "
-                f"may only refer to attestType 0 or 2.",
+                f"may only refer to attestType {allowed_types}.",
             )
             continue
 
@@ -107,18 +119,17 @@ def validate_attest_request(
                           f"subType must be an integer.")
             continue
 
-        allowed_subtypes = VALID_SUBTYPES_BY_TYPE.get(selected_type)
-        if allowed_subtypes and subtype not in allowed_subtypes:
+        if subtype not in VALID_SUBTYPES_BY_TYPE[AttestType(selected_type)]:
             errors.append(f"attestSubType entry {index} "
                           f"has an invalid subtype.")
             continue
 
         found_types.add(selected_type)
 
-    for selected_type in (0, 2):
-        if selected_type in attest_types and selected_type not in found_types:
+    for attest_type in VALID_SUBTYPES_BY_TYPE:
+        if attest_type in attest_types and attest_type not in found_types:
             errors.append(
-                f"attestType {selected_type} requires an attestSubType.")
+                f"attestType {attest_type.value} requires an attestSubType.")
 
     return errors
 
@@ -138,7 +149,7 @@ def validate_json_structure(
 
 def validate_attest_types(
         attest_types: list[int],
-        valid_types: set[int]) -> list[str]:
+        valid_types: Set[int]) -> list[str]:
     """Validate attestation types against supported identifiers.
 
     :param attest_types: Parsed attestation type identifiers
