@@ -52,6 +52,8 @@ def test_validate_json_structure() -> None:
     ("Fornavn Efternavn - dq54321", "DQ54321", "Fornavn Efternavn"),
     ("Fornavn Mellem Efternavn -DQ12345", "DQ12345",
      "Fornavn Mellem Efternavn"),
+    ("Fornavn Efternavn - DQB6106", "DQB6106", "Fornavn Efternavn"),
+    ("Fornavn Efternavn - XX0", "XX0", "Fornavn Efternavn"),
 ])
 def test_extract_sagsbehandler(value: str, dq: str, name: str) -> None:
     assert extract_sagsbehandler_dq(value) == dq
@@ -59,8 +61,7 @@ def test_extract_sagsbehandler(value: str, dq: str, name: str) -> None:
 
 
 @pytest.mark.parametrize("value", [
-    "Fornavn Efternavn", "- DQ00000", "Navn - DQ0000", "Navn - DQ000000",
-    "Navn - DQB6106", "Navn - XX00000", None, 123,
+    "Fornavn Efternavn", "- DQ00000", "Navn - ", None, 123,
 ])
 def test_extract_sagsbehandler_invalid(value: object) -> None:
     assert extract_sagsbehandler_dq(value) is None
@@ -95,8 +96,15 @@ def test_validate_attest_request_invalid_subtypes(attest_types: list[int], subty
         make_payload(attestSubType=subtypes), attest_types)
 
 
+@pytest.mark.parametrize("cpr", ["010190-1234", "0101901234"])
+def test_validate_attest_request_valid_cpr(cpr: str) -> None:
+    assert validate_attest_request(make_payload(medarbejderCPR=cpr), [1]) == []
+
+
 @pytest.mark.parametrize("overrides", [
-    {"medarbejderCPR": "0101901234"},
+    {"medarbejderCPR": "010190--1234"},
+    {"medarbejderCPR": "01019-01234"},
+    {"medarbejderCPR": "010190123"},
     {"medarbejderCPR": 101901234},
     {"sagsbehandler": "Fornavn Efternavn"},
     {"samtykke": "true"},

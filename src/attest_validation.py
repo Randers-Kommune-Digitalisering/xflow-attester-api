@@ -10,7 +10,6 @@ REQUIRED_ATTEST_REQUEST_FIELDS = [
     "samtykke",
 ]
 VALID_ATTEST_TYPES = {0, 1, 2}
-DQ_NUMBER_PATTERN = r"DQ[0-9]{5}"
 # TODO: Replace the empty sets with X-Flow's allowed subtype codes
 VALID_SUBTYPES_BY_TYPE: dict[int, set[int]] = {
     0: set(),
@@ -58,14 +57,14 @@ def validate_attest_request(
     errors: list[str] = []
     if extract_sagsbehandler_dq(payload.get("sagsbehandler")) is None:
         errors.append(
-            "sagsbehandler must end with a name and DQ number, "
-            "e.g. Name - DQ0000.")
+            "sagsbehandler must be formatted as Name - DQ number.")
 
     medarbejder_cpr = payload.get("medarbejderCPR")
     if not isinstance(medarbejder_cpr, str):
         errors.append("medarbejderCPR must be a string.")
-    elif re.fullmatch(r"[0-9]{6}-[0-9]{4}", medarbejder_cpr) is None:
-        errors.append("medarbejderCPR must be formatted as DDMMYY-XXXX.")
+    elif re.fullmatch(r"[0-9]{6}-?[0-9]{4}", medarbejder_cpr) is None:
+        errors.append(
+            "medarbejderCPR must be formatted as DDMMYY-XXXX or DDMMYYXXXX.")
 
     if type(payload.get("samtykke")) is not bool:
         errors.append("samtykke must be a boolean.")
@@ -164,7 +163,7 @@ def extract_sagsbehandler_dq(value: object) -> str | None:
     Extract the trailing DQ number from the displayed caseworker name.
 
     :param value: Caseworker field, e.g. "Fornavn Efternavn - DQ00000"
-    :return: Uppercase DQ number, or None if the format is invalid
+    :return: Uppercase DQ number, or None if no name/DQ split is found
     """
     match = _match_sagsbehandler(value)
     return match.group(2).upper() if match else None
@@ -175,7 +174,7 @@ def extract_sagsbehandler_name(value: object) -> str | None:
     Extract the caseworker name from the displayed caseworker field.
 
     :param value: Caseworker field, e.g. "Fornavn Efternavn - DQ00000"
-    :return: Name portion, or None if the format is invalid
+    :return: Name portion, or None if no name/DQ split is found
     """
     match = _match_sagsbehandler(value)
     return match.group(1).strip() if match else None
@@ -186,5 +185,5 @@ def _match_sagsbehandler(value: object) -> re.Match[str] | None:
         return None
 
     return re.fullmatch(
-        rf"(.+)\s+-\s*({DQ_NUMBER_PATTERN})",
-        value.strip(), re.IGNORECASE)
+        r"(.+)\s+-\s*(\S+)",
+        value.strip())

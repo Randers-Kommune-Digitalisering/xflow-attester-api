@@ -3,6 +3,7 @@ python-dotenv>=1.0.0
 gunicorn>=21.2.0
 prometheus_client>=0.25.0
 SQLAlchemy>=2.0
+rk-digi>=2.2.0
 pymssql
 PyMySQL
 psycopg2-binary

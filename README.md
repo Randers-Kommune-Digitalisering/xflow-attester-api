@@ -46,7 +46,7 @@ flowchart LR
 
 Valideringsregler:
 
-* `sagsbehandler`: `Navn - DQ` + præcis 5 cifre.
+* `sagsbehandler`: `Navn - DQ-nummer` (DQ-nummerets format valideres ikke).
 * `medarbejderCPR`: `DDMMÅÅ-XXXX`.
 * `attestType`: `0`, `1` og/eller `2` – int eller kommasepareret string, ingen dubletter.
 * `attestSubType`: præcis ét objekt for hver bestilt attestType 0 og 2. AttestType 1 har ingen subtype (`[]` hvis kun 1 er bestilt).

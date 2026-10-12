@@ -47,14 +47,14 @@ def receive_data() -> tuple[Response, int]:
     if errors:
         return jsonify({"errors": errors}), 400
 
-    database_engine = current_app.extensions.get("database_engine")
-    if database_engine is None:
+    database_manager = current_app.extensions.get("database_manager")
+    if database_manager is None:
         return jsonify({"error": "Database is not configured."}), 503
 
     sagsbehandler_dq = extract_sagsbehandler_dq(payload["sagsbehandler"])
     is_approved = is_authorized_sagsbehandler(
         sagsbehandler_dq or "",
-        database_engine,
+        database_manager,
     )
     approval_status = "approved" if is_approved else "denied"
     # Save every valid request, including those with denied approval.
@@ -62,7 +62,7 @@ def receive_data() -> tuple[Response, int]:
         payload,
         attest_types,
         is_approved,
-        database_engine,
+        database_manager,
     )
     return jsonify({
         "status": "data received",

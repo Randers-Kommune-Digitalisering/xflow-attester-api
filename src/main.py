@@ -3,10 +3,11 @@ Main entry point for the Flask application.
 """
 from flask import Flask, Response, jsonify, request
 from prometheus_client import generate_latest
+from rkdigi import DatabaseManager
 
 from attest_database import refresh_authorized_dq_numbers
+from model import Base
 from utils.config import get_config_class_path
-from utils.database import DatabaseClient
 from utils.logging import error_counter, set_logging_configuration
 from utils.sftp import SFTPClient
 
@@ -28,17 +29,20 @@ def create_app(config_object: str = "utils.config.DevConfig") -> Flask:
 
     authorization_csv = _read_authorization_csv(app)
 
-    database_client = DatabaseClient(
-        db_type=app.config["ATTEST_DB_TYPE"],
+    db_port = app.config["ATTEST_DB_PORT"]
+    # Creates missing tables from the models after verifying the connection.
+    database_manager = DatabaseManager(
+        profile_name="attest_db",
+        db_type="postgres",
         database=app.config["ATTEST_DB_NAME"],
         username=app.config["ATTEST_DB_USERNAME"],
         password=app.config["ATTEST_DB_PASSWORD"],
         host=app.config["ATTEST_DB_HOST"],
-        port=app.config["ATTEST_DB_PORT"],
+        port=int(db_port) if db_port else None,
+        base_model=Base,
     )
-    database_engine = database_client.engine
-    app.extensions["database_engine"] = database_engine
-    refresh_authorized_dq_numbers(authorization_csv, database_engine)
+    app.extensions["database_manager"] = database_manager
+    refresh_authorized_dq_numbers(authorization_csv, database_manager)
 
     from api_endpoints import api
     app.register_blueprint(api)
