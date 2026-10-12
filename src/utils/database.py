@@ -1,36 +1,42 @@
+"""
+SQLAlchemy engine factory for the supported database types.
+"""
 import sqlalchemy
-import logging
+
+DRIVERS = {
+    "mssql": "mssql+pymssql",
+    "mariadb": "mariadb+pymysql",
+    "postgresql": "postgresql+psycopg2",
+}
 
 
 class DatabaseClient:
-    def __init__(self, db_type, database, username, password, host, port=None):
-        if db_type.lower() == 'mssql':
-            driver = 'mssql+pymssql'
-        elif db_type.lower() == 'mariadb':
-            driver = 'mariadb+mariadbconnector'
-        elif db_type.lower() == 'postgresql':
-            driver = 'postgresql+psycopg2'
-        else:
-            raise ValueError(f"Invalid database type {type}")
+    """
+    Create a SQLAlchemy engine for an MSSQL, MariaDB or PostgreSQL database.
 
-        self.logger = logging.getLogger(__name__)
+    :param db_type: One of ``mssql``, ``mariadb`` or ``postgresql``.
+    :param database: Database name.
+    :param username: Database user.
+    :param password: Database password.
+    :param host: Database host.
+    :param port: Optional database port.
+    :raises ValueError: If the database type is not supported.
+    """
+
+    def __init__(
+        self: "DatabaseClient",
+        db_type: str,
+        database: str,
+        username: str,
+        password: str,
+        host: str,
+        port: str | None = None,
+    ) -> None:
+        driver = DRIVERS.get(db_type.lower())
+        if driver is None:
+            raise ValueError(f"Invalid database type {db_type}")
 
         if port:
-            host = host + f':{port}'
+            host = f"{host}:{port}"
 
-        self.engine = sqlalchemy.create_engine(f'{driver}://{username}:{password}@{host}/{database}')
-
-    def get_connection(self):
-        try:
-            if self.engine:
-                return self.engine.connect()
-            self.logger.error("DatabaseClient not initialized properly. Engine is None. Check error from init.")
-        except Exception as e:
-            self.logger.error(f"Error connecting to database: {e}")
-
-    def execute_sql(self, sql):
-        try:
-            with self.get_connection() as conn:
-                return conn.execute(sqlalchemy.text(sql))
-        except Exception as e:
-            self.logger.error(f"Error executing SQL: {e}")
+        self.engine = sqlalchemy.create_engine(f"{driver}://{username}:{password}@{host}/{database}")

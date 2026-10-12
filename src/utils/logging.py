@@ -1,60 +1,55 @@
-import sys
+"""
+Centralized Werkzeug logging configuration.
+"""
 import logging
 import re
+import sys
+from wsgiref.simple_server import WSGIRequestHandler
 
-from werkzeug import serving
-from prometheus_client import Gauge, Counter, Summary
+from prometheus_client import Counter  # , Gauge, Summary
 
-from utils.config import DEBUG
-
-# Prometheus metricts
-
-# Availavility metrics
-is_ready_gauge = Gauge(
-    'is_ready', '1 - app is running, 0 - app is down',
-    labelnames=['error_type', 'job_name'])
-last_updated_gauge = Gauge(
-    'last_updated_ms',
-    "Timestamp of the last time the app's availability was updated")
-
-# Dependency metrics
-is_available_gauge = Gauge(
-    'is_available',
-    '1 - dependency is available, 0 - dependency is not available',
-    labelnames=['dependency_name'])
-
-# Job metrics
-job_start_counter = Counter(
-    'job_start', 'Number of times a job has started',
-    labelnames=['job_name'])
-job_complete_counter = Counter(
-    'job_complete', 'Number of times a job has completed',
-    labelnames=['job_name', 'status'])
-job_duration_summary = Summary(
-    'job_duration_s', 'Duration of a job in seconds',
-    labelnames=['job_name', 'status'])
-
-# HTTP metrics
+# Prometheus metrics
 error_counter = Counter(
-    'http_server_errors', 'Number of 5xx responses',
-    labelnames=['endpoint', 'status'])
+    name="http_server_errors",
+    documentation="Number of 5xx responses",
+    labelnames=["endpoint", "status"],
+)
 
 
-# Logging configuration
-def set_logging_configuration():
-    log_level = logging.DEBUG if DEBUG else logging.INFO
+def set_logging_configuration(debug: bool = False) -> None:
+    """
+    Set the logging configuration for the application.
+
+    :param debug: If True, set the logging level to DEBUG. Otherwise, set it to INFO.
+    """
+    log_level = logging.DEBUG if debug else logging.INFO
     logging.basicConfig(
-        stream=sys.stdout, level=log_level,
-        format='[%(asctime)s] %(levelname)s - %(name)s - %(module)s:'
-        '%(funcName)s - %(message)s', datefmt='%d-%m-%Y %H:%M:%S')
-    disable_endpoint_logs(('/metrics', '/healthz'))
+        stream=sys.stdout,
+        level=log_level,
+        format="[%(asctime)s] %(levelname)s - %(name)s - %(module)s:%(funcName)s - %(message)s",
+        datefmt="%d-%m-%Y %H:%M:%S",
+    )
+
+    # Best-effort: only affects the Werkzeug dev server.
+    try:
+        from werkzeug import serving
+
+        disable_endpoint_logs(serving, ("/healthz", "/metrics"))
+    except Exception:
+        pass
 
 
-def disable_endpoint_logs(disabled_endpoints):
-    parent_log_request = serving.WSGIRequestHandler.log_request
+def disable_endpoint_logs(serving_module: type, disabled_endpoints: tuple[str, ...]) -> None:
+    """
+    Disable logging for specific endpoints in the Werkzeug dev server.
 
-    def log_request(self, *args, **kwargs):
+    :param serving_module: The Werkzeug serving module.
+    :param disabled_endpoints: A tuple of endpoint paths to disable logging for.
+    """
+    parent_log_request = serving_module.WSGIRequestHandler.log_request
+
+    def log_request(self: WSGIRequestHandler, *args: tuple, **kwargs: dict) -> None:
         if not any(re.match(f"{de}$", self.path) for de in disabled_endpoints):
             parent_log_request(self, *args, **kwargs)
 
-    serving.WSGIRequestHandler.log_request = log_request
+    serving_module.WSGIRequestHandler.log_request = log_request

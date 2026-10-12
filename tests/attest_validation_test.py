@@ -1,14 +1,12 @@
 import pytest
 
 from attest_validation import (extract_sagsbehandler_dq,
-                               extract_sagsbehandler_name,
-                               parse_attest_types,
-                               validate_attest_request,
-                               validate_attest_types,
+                               extract_sagsbehandler_name, parse_attest_types,
+                               validate_attest_request, validate_attest_types,
                                validate_json_structure)
 
 
-def make_payload(**overrides):
+def make_payload(**overrides: object) -> dict[str, object]:
     payload = {
         "sagsbehandler": "Fornavn Efternavn - DQ00000",
         "medarbejderCPR": "010190-1234",
@@ -25,25 +23,25 @@ def make_payload(**overrides):
     ("0,1,2", [0, 1, 2]),
     (2, [2]),
 ])
-def test_parse_attest_types_valid(value, expected):
+def test_parse_attest_types_valid(value: object, expected: list[int]) -> None:
     assert parse_attest_types(value) == (expected, [])
 
 
 @pytest.mark.parametrize("value", ["", "0,", "a", "1.5", True, None, [0]])
-def test_parse_attest_types_invalid(value):
+def test_parse_attest_types_invalid(value: object) -> None:
     types, errors = parse_attest_types(value)
     assert types == []
     assert errors
 
 
-def test_validate_attest_types():
+def test_validate_attest_types() -> None:
     assert validate_attest_types([0, 1, 2], {0, 1, 2}) == []
     assert validate_attest_types([], {0, 1, 2})
     assert validate_attest_types([0, 0], {0, 1, 2})
     assert validate_attest_types([3], {0, 1, 2})
 
 
-def test_validate_json_structure():
+def test_validate_json_structure() -> None:
     assert validate_json_structure({"a": 1}, ["a"]) == []
     assert validate_json_structure({}, ["a", "b"]) == [
         "Missing required field: a.", "Missing required field: b."]
@@ -55,7 +53,7 @@ def test_validate_json_structure():
     ("Fornavn Mellem Efternavn -DQ12345", "DQ12345",
      "Fornavn Mellem Efternavn"),
 ])
-def test_extract_sagsbehandler(value, dq, name):
+def test_extract_sagsbehandler(value: str, dq: str, name: str) -> None:
     assert extract_sagsbehandler_dq(value) == dq
     assert extract_sagsbehandler_name(value) == name
 
@@ -64,7 +62,7 @@ def test_extract_sagsbehandler(value, dq, name):
     "Fornavn Efternavn", "- DQ00000", "Navn - DQ0000", "Navn - DQ000000",
     "Navn - DQB6106", "Navn - XX00000", None, 123,
 ])
-def test_extract_sagsbehandler_invalid(value):
+def test_extract_sagsbehandler_invalid(value: object) -> None:
     assert extract_sagsbehandler_dq(value) is None
     assert extract_sagsbehandler_name(value) is None
 
@@ -76,7 +74,7 @@ def test_extract_sagsbehandler_invalid(value):
         {"attestType": 0, "subType": 1}, {"attestType": 2, "subType": 2}]),
     ([1], []),
 ])
-def test_validate_attest_request_valid_combinations(attest_types, subtypes):
+def test_validate_attest_request_valid_combinations(attest_types: list[int], subtypes: list[dict[str, int]]) -> None:
     assert validate_attest_request(
         make_payload(attestSubType=subtypes), attest_types) == []
 
@@ -92,7 +90,7 @@ def test_validate_attest_request_valid_combinations(attest_types, subtypes):
     ([0], ["not a dict"]),
     ([1], "not a list"),
 ])
-def test_validate_attest_request_invalid_subtypes(attest_types, subtypes):
+def test_validate_attest_request_invalid_subtypes(attest_types: list[int], subtypes: object) -> None:
     assert validate_attest_request(
         make_payload(attestSubType=subtypes), attest_types)
 
@@ -104,5 +102,5 @@ def test_validate_attest_request_invalid_subtypes(attest_types, subtypes):
     {"samtykke": "true"},
     {"samtykke": 1},
 ])
-def test_validate_attest_request_invalid_fields(overrides):
+def test_validate_attest_request_invalid_fields(overrides: dict[str, object]) -> None:
     assert validate_attest_request(make_payload(**overrides), [1])

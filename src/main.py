@@ -1,42 +1,32 @@
+"""
+Main entry point for the Flask application.
+"""
 from flask import Flask, Response, jsonify, request
 from prometheus_client import generate_latest
 
-from api_endpoints import api_endpoints
 from attest_database import refresh_authorized_dq_numbers
+from utils.config import get_config_class_path
 from utils.database import DatabaseClient
 from utils.logging import error_counter, set_logging_configuration
 from utils.sftp import SFTPClient
 
+AUTHORIZATION_CSV_PATH = "/Brugeradministration-da.csv"
 
-def create_app(config_object: str = "utils.config") -> Flask:
+
+def create_app(config_object: str = "utils.config.DevConfig") -> Flask:
     """
     Create and configure the Flask application.
 
     :param config_object: The configuration object to use.
     :return: The Flask application instance.
-    :raises RuntimeError: If the SFTP authorization server cannot be reached.
     """
     app = Flask(__name__)
     app.config.from_object(config_object)
 
-    sftp_client = SFTPClient(
-        host=app.config["SFTP_HOST"],
-        username=app.config["SFTP_USERNAME"],
-        password=app.config["SFTP_PASSWORD"],
-        key_base64=app.config["SFTP_KEY_BASE64"],
-        key_pass=app.config["SFTP_KEY_PASS"],
-    )
-    sftp_connection = sftp_client.get_connection()
-    if sftp_connection is None:
-        raise RuntimeError(
-            "Unable to connect to the SFTP authorization server.")
+    debug = bool(app.config.get("DEBUG", False))
+    set_logging_configuration(debug=debug)
 
-    try:
-        with sftp_connection.open(
-                "/Brugeradministration-da.csv", "rb") as csv_file:
-            authorization_csv = csv_file.read().decode("utf-16")
-    finally:
-        sftp_connection.close()
+    authorization_csv = _read_authorization_csv(app)
 
     database_client = DatabaseClient(
         db_type=app.config["ATTEST_DB_TYPE"],
@@ -50,9 +40,8 @@ def create_app(config_object: str = "utils.config") -> Flask:
     app.extensions["database_engine"] = database_engine
     refresh_authorized_dq_numbers(authorization_csv, database_engine)
 
-    set_logging_configuration()
-
-    app.register_blueprint(api_endpoints)
+    from api_endpoints import api
+    app.register_blueprint(api)
     app.add_url_rule("/metrics", "metrics", view_func=generate_latest)
 
     @app.after_request
@@ -83,8 +72,35 @@ def create_app(config_object: str = "utils.config") -> Flask:
     return app
 
 
+def _read_authorization_csv(app: Flask) -> str:
+    """
+    Download the user administration CSV from the SFTP server.
+
+    :param app: The Flask application holding the SFTP configuration.
+    :return: The decoded CSV content.
+    :raises RuntimeError: If the SFTP authorization server cannot be reached.
+    """
+    sftp_client = SFTPClient(
+        host=app.config["SFTP_HOST"],
+        username=app.config["SFTP_USERNAME"],
+        password=app.config["SFTP_PASSWORD"],
+        key_base64=app.config["SFTP_KEY_BASE64"],
+        key_pass=app.config["SFTP_KEY_PASS"],
+    )
+    sftp_connection = sftp_client.get_connection()
+    if sftp_connection is None:
+        raise RuntimeError("Unable to connect to the SFTP authorization server.")
+
+    try:
+        with sftp_connection.open(AUTHORIZATION_CSV_PATH, "rb") as csv_file:
+            return csv_file.read().decode("utf-16")
+    finally:
+        sftp_connection.close()
+
+
+# WSGI entrypoint for `gunicorn --chdir src main:app`
+app = create_app(config_object=get_config_class_path())
+
+
 if __name__ == "__main__":  # pragma: no cover
-    app = create_app()
-    app.run(
-        debug=app.config["DEBUG"],
-        host="0.0.0.0", port=int(app.config.get("PORT")))
+    app.run(debug=app.config["DEBUG"], host="0.0.0.0", port=int(app.config.get("PORT")))

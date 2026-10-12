@@ -16,7 +16,7 @@ services:
       retries: 10
 
   app:
-    build: src
+    build: .
     environment:
       FLASK_ENV: prod
       PORT: "8080"

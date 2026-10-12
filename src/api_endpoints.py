@@ -1,3 +1,6 @@
+"""
+API endpoints for the Flask application.
+"""
 import logging
 
 from flask import Blueprint, Response, current_app, jsonify, request
@@ -9,17 +12,14 @@ from attest_validation import (REQUIRED_ATTEST_REQUEST_FIELDS,
                                parse_attest_types, validate_attest_request,
                                validate_attest_types, validate_json_structure)
 
+api = Blueprint("api", __name__, url_prefix="/api")
 logger = logging.getLogger(__name__)
-api_endpoints = Blueprint('api', __name__, url_prefix='/api')
-
-# NB: uncomment code in main.py to enable these endpoints
-# Any endpoints added here will be available at /api/<endpoint>
-# - e.g. http://127.0.0.1:8080/api/example
 
 
-@api_endpoints.route("/receive_data", methods=["POST"])
+@api.route("/receive_data", methods=["POST"])
 def receive_data() -> tuple[Response, int]:
-    """Validate, authorize, and persist an incoming X-Flow request.
+    """
+    Validate, authorize, and persist an incoming X-Flow request.
 
     Structurally valid requests are saved even when the requester is not
     authorized; those requests are marked for manual handling.
