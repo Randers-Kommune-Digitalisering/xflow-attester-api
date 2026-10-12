@@ -116,6 +116,14 @@ def test_receive_data_saves_request(
             ),
             {"request_id": body["requestId"]},
         ).all()
+        notification_rows = connection.execute(
+            sqlalchemy.text(
+                "SELECT o.attest_type, n.notification_type, n.status, n.attempts, n.sent_at, n.created_at "
+                "FROM attestation_order o JOIN notification n ON n.order_id = o.order_id "
+                "WHERE o.request_id = :request_id ORDER BY o.attest_type",
+            ),
+            {"request_id": body["requestId"]},
+        ).all()
 
     expected_status = "pending_order" if is_approved else "rejected"
     assert tuple(request_row) == ("0101901234", is_approved)
@@ -123,6 +131,12 @@ def test_receive_data_saves_request(
         (0, 1, expected_status, expected_status),
         (1, None, expected_status, expected_status),
     ]
+    expected_type = "order_confirmation" if is_approved else "order_rejection"
+    assert [tuple(row[:5]) for row in notification_rows] == [
+        (0, expected_type, "pending", 0, None),
+        (1, expected_type, "pending", 0, None),
+    ]
+    assert all(row.created_at is not None for row in notification_rows)
 
 
 def test_receive_data_rejects_invalid_payload(client: FlaskClient) -> None:
@@ -147,6 +161,10 @@ def test_notification_defaults_apply_to_raw_insert(app: Flask, client: FlaskClie
             ),
             {"request_id": response.get_json()["requestId"]},
         ).scalar_one()
+        connection.execute(
+            sqlalchemy.text("DELETE FROM notification WHERE order_id = :order_id"),
+            {"order_id": order_id},
+        )
         connection.execute(
             sqlalchemy.text(
                 "INSERT INTO notification (notification_id, order_id, notification_type) "

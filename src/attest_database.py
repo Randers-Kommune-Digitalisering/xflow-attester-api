@@ -13,8 +13,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from attest_validation import (extract_sagsbehandler_dq,
                                extract_sagsbehandler_name)
 from model import (AttestationOrder, AttestationRequest,
-                   AuthorizedSagsbehandler, OrderEvent, OrderStatus,
-                   SagsbehandlerRoles)
+                   AuthorizedSagsbehandler, Notification, NotificationType,
+                   OrderEvent, OrderStatus, SagsbehandlerRoles)
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ def _build_attestation_request(
     is_approved: bool,
     requested_at: datetime.datetime,
 ) -> AttestationRequest:
-    """Build a request with one order and initial event per attestation type.
+    """Build a request with an order, initial event and notification per type.
 
     :param payload: Validated request body
     :param attest_types: Selected attestation type identifiers
@@ -154,6 +154,10 @@ def _build_attestation_request(
         subtype_by_type[selected_type] = subtype
 
     status = OrderStatus.PENDING_ORDER if is_approved else OrderStatus.REJECTED
+    notification_type = (
+        NotificationType.ORDER_CONFIRMATION
+        if is_approved else NotificationType.ORDER_REJECTION
+    )
     return AttestationRequest(
         request_id=str(uuid.uuid4()),
         requester_dq=requester_dq,
@@ -173,6 +177,7 @@ def _build_attestation_request(
                         actor=requester_dq,
                     ),
                 ],
+                notifications=[Notification(notification_type=notification_type)],
             )
             for attest_type in attest_types
         ],

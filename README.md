@@ -16,8 +16,8 @@ flowchart LR
 ```
 
 1. **Ved opstart** hentes `/Brugeradministration-da.csv` (semikolon-separeret, UTF-16) fra SFTP. DQ-numre med rollen *Leder* eller *Stedfortræder for leder* gemmes med deres rolle i tabellen `authorized_sagsbehandler` (listen erstattes hver gang). Kan SFTP ikke nås, starter app'en ikke.
-2. **Ved modtagelse** valideres JSON, og rekvirentens DQ-nummer slås op. Der oprettes **én række** i `attestation_request` og **én række pr. bestilt attestType** i `attestation_order`, hver med en første statushændelse i `order_event`.
-3. Bestillinger fra ikke-autoriserede rekvirenter gemmes også, men med `is_approved = false` og ordrestatus `rejected`.
+2. **Ved modtagelse** valideres JSON, og rekvirentens DQ-nummer slås op. Der oprettes **én række** i `attestation_request` og **én række pr. bestilt attestType** i `attestation_order`, hver med en første statushændelse i `order_event` og en afventende underretning i `notification`.
+3. Bestillinger fra ikke-autoriserede rekvirenter gemmes også, men med `is_approved = false` og ordrestatus `rejected`. Der oprettes en `order_rejection` i stedet for en `order_confirmation` pr. ordre.
 
 > Data indeholder CPR-numre (personfølsomme oplysninger). Brug aldrig produktionsdata i test, og log ikke payloads.
 
@@ -60,7 +60,7 @@ Svar:
 
 ### Databasestruktur
 
-Modellerne er defineret i [`src/model.py`](/src/model.py). Denne app skriver til `authorized_sagsbehandler`, `attestation_request`, `attestation_order` og `order_event`. `received_record` udfyldes af den app, der modtager og journaliserer attesterne.
+Modellerne er defineret i [`src/model.py`](/src/model.py). Denne app skriver til `authorized_sagsbehandler`, `attestation_request`, `attestation_order`, `order_event` og `notification`. `received_record` udfyldes af den app, der modtager og journaliserer attesterne.
 
 ```mermaid
 erDiagram
@@ -88,11 +88,14 @@ En modtaget attest behandles på én af to måder, angivet i `received_record.ou
 
 `outcome` og `processed_at` er tomme, indtil attesten er behandlet, og skal udfyldes samtidig.
 
-Underretninger spores i `notification` og påvirker ikke ordrestatus. Ordrestatus viser, hvor langt ordren er nået, og `notification.status` (`pending`, `sent`, `failed`) viser, om rekvirenten er underrettet:
+Underretninger spores i `notification` og påvirker ikke ordrestatus. Ordrestatus viser, hvor langt ordren er nået, og `notification.status` (`pending`, `sent`, `failed`) viser, om underretningen er sendt. Denne app opretter én `pending` underretning pr. ordre, men sender ikke mails. En anden app sender de afventende underretninger på en tidsplan:
 
 * `order_confirmation` – bekræftelse på, at bestillingen er modtaget.
+* `order_rejection` – besked om, at bestillingen er afvist.
 * `record_journalized` – mail med link til den journaliserede attest.
-* `record_sent` – mail med attesten vedhæftet til manuel journalisering.
+* `record_sent_to_requester` – mail med attesten vedhæftet til manuel journalisering.
+
+Kun `order_confirmation` og `order_rejection` oprettes af denne app; underretninger om modtagne attester håndteres af en anden app.
 
 `last_error` må ikke indeholde personoplysninger.
 
@@ -101,7 +104,7 @@ Manglende tabeller oprettes automatisk ved opstart. Eksisterende tabeller ændre
 ### Kendte begrænsninger / TODO
 
 * Autorisationslisten opdateres kun ved opstart.
-* Bekræftelse/afvisning sendes endnu ikke til rekvirenten – kun som HTTP-svar.
+* En anden app skal sende de oprettede underretninger; dette API udsender ingen mails.
 
 ## Afhængigheder
 

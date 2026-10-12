@@ -18,12 +18,13 @@ def _new_uuid() -> str:
 class OrderStatus(str, enum.Enum):
     """Workflow state of a single attestation order."""
 
+    REJECTED = "rejected"
     PENDING_ORDER = "pending_order"
     ORDERED = "ordered"
     RECEIVED = "received"
+    UNDER_REVIEW = "under_review"
     JOURNALIZED = "journalized"
     SENT_TO_REQUESTER = "sent_to_requester"
-    REJECTED = "rejected"
 
 
 # native_enum=False gives a portable VARCHAR + CHECK on MSSQL, MySQL and PostgreSQL.
@@ -58,11 +59,12 @@ RecordOutcomeType = Enum(
 class NotificationType(str, enum.Enum):
     """Reason a notification is sent to the requester."""
 
-    ORDER_CONFIRMATION = "order_confirmation"
-    # Mail with a reference to the journalized record.
-    RECORD_JOURNALIZED = "record_journalized"
-    # Mail with the record attached for manual journalization.
-    RECORD_SENT = "record_sent"
+    ORDER_REJECTION = "order_rejection"                 # Mail confirming that the order has been rejected.
+    ORDER_CONFIRMATION = "order_confirmation"           # Mail confirming that the order was received.
+    RECORD_JOURNALIZED = "record_journalized"           # Mail indicating that the record has been journalized.
+    RECORD_ATTACHED = "record_attached"                 # Mail with the record attached for manual journalization.
+    RECORD_UNDER_REVIEW = "record_under_review"         # Mail indicating that the record is under review by the legal team.
+    RECORD_REQUIRES_REVIEW = "record_requires_review"   # Mail to legal team indicating that the record requires an additional review.
 
 
 NotificationTypeType = Enum(
