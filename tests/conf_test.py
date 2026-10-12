@@ -12,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from model import AttestationOrder, ReceivedRecord
 from utils.sftp import SFTPError
 
 os.environ.setdefault("FLASK_ENV", "dev")
@@ -128,6 +129,78 @@ def test_receive_data_rejects_invalid_payload(client: FlaskClient) -> None:
     response = client.post("/api/receive_data", json={"attestType": "0"})
     assert response.status_code == 400
     assert response.get_json()["errors"]
+
+
+def test_notification_defaults_apply_to_raw_insert(app: Flask, client: FlaskClient) -> None:
+    response = client.post(
+        "/api/receive_data",
+        json=make_payload("Fornavn Efternavn - DQ12345"),
+    )
+    assert response.status_code == 200
+
+    engine = app.extensions["database_manager"].get_session.kw["bind"]
+    with engine.begin() as connection:
+        order_id = connection.execute(
+            sqlalchemy.text(
+                "SELECT order_id FROM attestation_order "
+                "WHERE request_id = :request_id AND attest_type = 0",
+            ),
+            {"request_id": response.get_json()["requestId"]},
+        ).scalar_one()
+        connection.execute(
+            sqlalchemy.text(
+                "INSERT INTO notification (notification_id, order_id, notification_type) "
+                "VALUES (:notification_id, :order_id, :notification_type)",
+            ),
+            {
+                "notification_id": "test-notification",
+                "order_id": order_id,
+                "notification_type": "order_confirmation",
+            },
+        )
+        status, attempts, created_at = connection.execute(
+            sqlalchemy.text(
+                "SELECT status, attempts, created_at FROM notification "
+                "WHERE notification_id = :notification_id",
+            ),
+            {"notification_id": "test-notification"},
+        ).one()
+
+    assert (status, attempts) == ("pending", 0)
+    assert created_at is not None
+
+
+def test_order_with_received_record_cannot_be_deleted(app: Flask, client: FlaskClient) -> None:
+    engine = app.extensions["database_manager"].get_session.kw["bind"]
+    with engine.connect() as connection:
+        connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+
+    response = client.post(
+        "/api/receive_data",
+        json=make_payload("Fornavn Efternavn - DQ12345"),
+    )
+    assert response.status_code == 200
+
+    with app.extensions["database_manager"].get_session() as session:
+        order = session.query(AttestationOrder).filter_by(
+            request_id=response.get_json()["requestId"],
+            attest_type=0,
+        ).one()
+        record = ReceivedRecord(order=order)
+        session.add(record)
+        session.commit()
+        order_id = order.order_id
+        record_id = record.record_id
+        assert order.received_record is not None
+
+        session.delete(order)
+        with pytest.raises(sqlalchemy.exc.IntegrityError):
+            session.commit()
+
+        session.rollback()
+
+        assert session.get(AttestationOrder, order_id) is not None
+        assert session.get(ReceivedRecord, record_id).order_id == order_id
 
 
 @pytest.mark.parametrize("cpr", ["010190-1234", "0101901234"])

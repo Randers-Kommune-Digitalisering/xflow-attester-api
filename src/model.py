@@ -3,8 +3,9 @@
 import enum
 import uuid
 
-from sqlalchemy import (BigInteger, Boolean, Column, DateTime, Enum,
-                        ForeignKey, Integer, String, UniqueConstraint, func)
+from sqlalchemy import (BigInteger, Boolean, CheckConstraint, Column, DateTime,
+                        Enum, ForeignKey, Integer, String, UniqueConstraint,
+                        func, text)
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -21,7 +22,7 @@ class OrderStatus(str, enum.Enum):
     ORDERED = "ordered"
     RECEIVED = "received"
     JOURNALIZED = "journalized"
-    NOTIFIED = "notified"
+    SENT_TO_REQUESTER = "sent_to_requester"
     REJECTED = "rejected"
 
 
@@ -29,6 +30,62 @@ class OrderStatus(str, enum.Enum):
 OrderStatusType = Enum(
     OrderStatus,
     name="order_status",
+    native_enum=False,
+    create_constraint=True,
+    length=32,
+    values_callable=lambda members: [member.value for member in members],
+)
+
+
+class RecordOutcome(str, enum.Enum):
+    """How a received record was processed."""
+
+    JOURNALIZED = "journalized"
+    # The requesting sagsbehandler must journalize the record manually.
+    SENT_TO_REQUESTER = "sent_to_requester"
+
+
+RecordOutcomeType = Enum(
+    RecordOutcome,
+    name="record_outcome",
+    native_enum=False,
+    create_constraint=True,
+    length=32,
+    values_callable=lambda members: [member.value for member in members],
+)
+
+
+class NotificationType(str, enum.Enum):
+    """Reason a notification is sent to the requester."""
+
+    ORDER_CONFIRMATION = "order_confirmation"
+    # Mail with a reference to the journalized record.
+    RECORD_JOURNALIZED = "record_journalized"
+    # Mail with the record attached for manual journalization.
+    RECORD_SENT = "record_sent"
+
+
+NotificationTypeType = Enum(
+    NotificationType,
+    name="notification_type",
+    native_enum=False,
+    create_constraint=True,
+    length=32,
+    values_callable=lambda members: [member.value for member in members],
+)
+
+
+class NotificationStatus(str, enum.Enum):
+    """Delivery state of a notification."""
+
+    PENDING = "pending"
+    SENT = "sent"
+    FAILED = "failed"
+
+
+NotificationStatusType = Enum(
+    NotificationStatus,
+    name="notification_status",
     native_enum=False,
     create_constraint=True,
     length=32,
@@ -89,24 +146,34 @@ class AttestationOrder(Base):
     external_order_ref = Column(String(255), unique=True)
     ordered_at = Column(DateTime(timezone=True))
     request = relationship("AttestationRequest", back_populates="orders")
-    received_record = relationship("ReceivedRecord", back_populates="order", uselist=False)
+    received_record = relationship("ReceivedRecord", back_populates="order", uselist=False, passive_deletes="all")
     events = relationship("OrderEvent", back_populates="order", cascade="all, delete-orphan", order_by="OrderEvent.occurred_at")
+    notifications = relationship("Notification", back_populates="order", cascade="all, delete-orphan")
 
 
 class ReceivedRecord(Base):
-    """Received criminal record and its journalization in SBSYS."""
+    """Received criminal record and whether it was journalized or sent to the requester."""
 
     __tablename__ = "received_record"
+    __table_args__ = (
+        CheckConstraint(
+            "(outcome IS NULL AND processed_at IS NULL)"
+            " OR (outcome IS NOT NULL AND processed_at IS NOT NULL)",
+            name="ck_received_record_outcome_processed_at",
+        ),
+    )
     record_id = Column(String(36), primary_key=True, default=_new_uuid)
     # Nullable so unmatched records can be stored and matched manually.
-    order_id = Column(String(36), ForeignKey("attestation_order.order_id"), unique=True)
+    order_id = Column(String(36), ForeignKey("attestation_order.order_id", ondelete="RESTRICT"), unique=True)
     external_ref = Column(String(255))
     received_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    # NULL until the record has been processed.
+    outcome = Column(RecordOutcomeType, index=True)
+    processed_at = Column(DateTime(timezone=True))
+    # SBSYS references are only set when outcome is journalized.
     sbsys_sags_nr = Column(String(50))
     sbsys_sags_id = Column(Integer)
     sbsys_document_id = Column(String(50))
-    journalized_at = Column(DateTime(timezone=True))
-    notified_at = Column(DateTime(timezone=True))
     order = relationship("AttestationOrder", back_populates="received_record")
 
 
@@ -120,3 +187,22 @@ class OrderEvent(Base):
     occurred_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     actor = Column(String(50), nullable=False)
     order = relationship("AttestationOrder", back_populates="events")
+
+
+class Notification(Base):
+    """Notification to the requester about an order, tracked separately from the order status."""
+
+    __tablename__ = "notification"
+    __table_args__ = (
+        UniqueConstraint("order_id", "notification_type", name="uq_notification_order_type"),
+    )
+    notification_id = Column(String(36), primary_key=True, default=_new_uuid)
+    order_id = Column(String(36), ForeignKey("attestation_order.order_id", ondelete="CASCADE"), nullable=False, index=True)
+    notification_type = Column(NotificationTypeType, nullable=False)
+    status = Column(NotificationStatusType, nullable=False, index=True, server_default=NotificationStatus.PENDING.value)
+    attempts = Column(Integer, nullable=False, server_default=text("0"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    sent_at = Column(DateTime(timezone=True))
+    # Must not contain personal data such as e-mail addresses or CPR numbers.
+    last_error = Column(String(255))
+    order = relationship("AttestationOrder", back_populates="notifications")
