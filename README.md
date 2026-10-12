@@ -96,7 +96,7 @@ Underretninger spores i `notification` og påvirker ikke ordrestatus. Ordrestatu
 
 `last_error` må ikke indeholde personoplysninger.
 
-Manglende tabeller oprettes automatisk ved opstart. Eksisterende tabeller ændres ikke, og de gamle tabeller `attestation_requests` og `authorized_sagsbehandlere` bruges ikke længere og migreres ikke automatisk.
+Manglende tabeller oprettes automatisk ved opstart. Eksisterende tabeller ændres ikke, og de gamle tabeller `attestation_requests` og `authorized_sagsbehandler` bruges ikke længere og migreres ikke automatisk.
 
 ### Kendte begrænsninger / TODO
 
