@@ -76,7 +76,14 @@ def validate_attest_request(
         errors.append(
             "medarbejderCPR must be formatted as DDMMYY-XXXX or DDMMYYXXXX.")
 
-    if type(payload.get("samtykke")) is not bool:
+    samtykke = payload.get("samtykke")
+    if isinstance(samtykke, str):
+        normalized_samtykke = samtykke.strip().lower()
+        if normalized_samtykke in {"true", "false"}:
+            samtykke = normalized_samtykke == "true"
+            payload["samtykke"] = samtykke
+
+    if type(samtykke) is not bool:
         errors.append("samtykke must be a boolean.")
 
     subtypes = payload.get("attestSubType")
@@ -113,6 +120,12 @@ def validate_attest_request(
             errors.append(f"attestType {selected_type} "
                           f"can have at most one subtype.")
             continue
+
+        if isinstance(subtype, str):
+            try:
+                subtype = int(subtype.strip())
+            except ValueError:
+                pass
 
         if type(subtype) is not int:
             errors.append(f"attestSubType entry {index} "

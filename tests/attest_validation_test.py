@@ -6,17 +6,6 @@ from attest_validation import (extract_sagsbehandler_dq,
                                validate_json_structure)
 
 
-def make_payload(**overrides: object) -> dict[str, object]:
-    payload = {
-        "sagsbehandler": "Fornavn Efternavn - DQ00000",
-        "medarbejderCPR": "010190-1234",
-        "attestSubType": [],
-        "samtykke": True,
-    }
-    payload.update(overrides)
-    return payload
-
-
 @pytest.mark.parametrize("value, expected", [
     ("0", [0]),
     ("0, 1", [0, 1]),
@@ -70,12 +59,12 @@ def test_extract_sagsbehandler_invalid(value: object) -> None:
 
 @pytest.mark.parametrize("attest_types, subtypes", [
     ([0], [{"attestType": 0, "subType": 3}]),
+    ([0], [{"attestType": 0, "subType": "1"}]),
     ([0, 1], [{"attestType": 0, "subType": 3}]),
-    ([0, 1, 2], [
-        {"attestType": 0, "subType": 1}, {"attestType": 2, "subType": 1}]),
+    ([0, 1, 2], [{"attestType": 0, "subType": 1}, {"attestType": 2, "subType": "1"}]),
     ([1], []),
 ])
-def test_validate_attest_request_valid_combinations(attest_types: list[int], subtypes: list[dict[str, int]]) -> None:
+def test_validate_attest_request_valid_combinations(attest_types: list[int], subtypes: list[dict[str, object]]) -> None:
     assert validate_attest_request(
         make_payload(attestSubType=subtypes), attest_types) == []
 
@@ -86,7 +75,7 @@ def test_validate_attest_request_valid_combinations(attest_types: list[int], sub
     ([1], [{"attestType": 1, "subType": 1}]),
     ([1], [{"attestType": 0, "subType": 1}]),
     ([0], [{"attestType": 0, "subType": 1}, {"attestType": 0, "subType": 2}]),
-    ([0], [{"attestType": 0, "subType": "1"}]),
+    ([0], [{"attestType": 0, "subType": "invalid"}]),
     ([0], [{"attestType": "0", "subType": 1}]),
     ([0], ["not a dict"]),
     ([1], "not a list"),
@@ -101,14 +90,31 @@ def test_validate_attest_request_valid_cpr(cpr: str) -> None:
     assert validate_attest_request(make_payload(medarbejderCPR=cpr), [1]) == []
 
 
+def test_validate_attest_request_string_consent() -> None:
+    payload = make_payload(samtykke="true")
+    assert validate_attest_request(payload, [1]) == []
+    assert payload["samtykke"] is True
+
+
 @pytest.mark.parametrize("overrides", [
     {"medarbejderCPR": "010190--1234"},
     {"medarbejderCPR": "01019-01234"},
     {"medarbejderCPR": "010190123"},
     {"medarbejderCPR": 101901234},
     {"sagsbehandler": "Fornavn Efternavn"},
-    {"samtykke": "true"},
+    {"samtykke": "invalid"},
     {"samtykke": 1},
 ])
 def test_validate_attest_request_invalid_fields(overrides: dict[str, object]) -> None:
     assert validate_attest_request(make_payload(**overrides), [1])
+
+
+def make_payload(**overrides: object) -> dict[str, object]:
+    payload = {
+        "sagsbehandler": "Fornavn Efternavn - DQ00000",
+        "medarbejderCPR": "010190-1234",
+        "attestSubType": [],
+        "samtykke": True,
+    }
+    payload.update(overrides)
+    return payload

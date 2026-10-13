@@ -62,12 +62,18 @@ def receive_data() -> tuple[Response, int]:
     )
     approval_status = "approved" if is_approved else "denied"
     # Save every valid request, including those with denied approval.
-    request_id = save_attestation_request(
-        payload,
-        attest_types,
-        is_approved,
-        database_manager,
-    )
+    try:
+        request_id = save_attestation_request(
+            payload,
+            attest_types,
+            is_approved,
+            database_manager,
+        )
+    except Exception as error:
+        count_error(error)
+        logger.error("Failed to save attestation request: %s", error)
+        return jsonify({"error": "Unable to save attestation request."}), 500
+
     return jsonify({
         "status": "data received",
         "approvalStatus": approval_status,

@@ -143,6 +143,12 @@ def _build_attestation_request(
 
         selected_type = entry.get("attestType")
         subtype = entry.get("subType")
+        if isinstance(subtype, str):
+            try:
+                subtype = int(subtype.strip())
+            except ValueError:
+                pass
+
         if type(selected_type) is not int or type(subtype) is not int:
             raise ValueError(
                 "Validated request contains a non-integer subtype.")
@@ -158,6 +164,7 @@ def _build_attestation_request(
         NotificationType.ORDER_CONFIRMATION
         if is_approved else NotificationType.ORDER_REJECTION
     )
+
     return AttestationRequest(
         request_id=str(uuid.uuid4()),
         requester_dq=requester_dq,
