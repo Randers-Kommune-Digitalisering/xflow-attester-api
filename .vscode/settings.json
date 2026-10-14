@@ -1,0 +1,7 @@
+{
+    "github.copilot.chat.organizationInstructions.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": [
+        "--config=setup.cfg"
+    ],
+}

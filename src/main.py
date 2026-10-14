@@ -1,58 +1,54 @@
-from flask import Flask, Response, jsonify, request
+"""
+Main entry point for the Flask application.
+"""
+from flask import Flask, Response, got_request_exception, jsonify, request
 from prometheus_client import generate_latest
+from rkdigi import DatabaseManager
 
-from api_endpoints import api_endpoints
-from attest_database import refresh_authorized_dq_numbers
-from utils.database import DatabaseClient
-from utils.logging import error_counter, set_logging_configuration
-from utils.sftp import SFTPClient
+from authorization import refresh_authorization
+from model import Base
+from utils.config import get_config_class_path
+from utils.logging import (count_error, http_error_counter, set_logging_configuration)
 
 
-def create_app(config_object: str = "utils.config") -> Flask:
+def create_app(config_object: str = "utils.config.DevConfig") -> Flask:
     """
     Create and configure the Flask application.
 
     :param config_object: The configuration object to use.
     :return: The Flask application instance.
-    :raises RuntimeError: If the SFTP authorization server cannot be reached.
+    :raises Exception: Re-raises any startup error after counting it.
     """
     app = Flask(__name__)
     app.config.from_object(config_object)
 
-    sftp_client = SFTPClient(
-        host=app.config["SFTP_HOST"],
-        username=app.config["SFTP_USERNAME"],
-        password=app.config["SFTP_PASSWORD"],
-        key_base64=app.config["SFTP_KEY_BASE64"],
-        key_pass=app.config["SFTP_KEY_PASS"],
-    )
-    sftp_connection = sftp_client.get_connection()
-    if sftp_connection is None:
-        raise RuntimeError(
-            "Unable to connect to the SFTP authorization server.")
+    debug = bool(app.config.get("DEBUG", False))
+    set_logging_configuration(debug=debug)
 
     try:
-        with sftp_connection.open(
-                "/Brugeradministration-da.csv", "rb") as csv_file:
-            authorization_csv = csv_file.read().decode("utf-16")
-    finally:
-        sftp_connection.close()
+        db_port = app.config["ATTEST_DB_PORT"]
+        # Creates missing tables from the models after verifying the connection.
+        database_manager = DatabaseManager(
+            profile_name="attest_db",
+            db_type=app.config["ATTEST_DB_TYPE"],
+            database=app.config["ATTEST_DB_NAME"],
+            username=app.config["ATTEST_DB_USERNAME"],
+            password=app.config["ATTEST_DB_PASSWORD"],
+            host=app.config["ATTEST_DB_HOST"],
+            port=int(db_port) if db_port else None,
+            base_model=Base,
+        )
+        app.extensions["database_manager"] = database_manager
+        refresh_authorization(app.config, database_manager)
+    except Exception as error:
+        count_error(error)
+        raise
 
-    database_client = DatabaseClient(
-        db_type=app.config["ATTEST_DB_TYPE"],
-        database=app.config["ATTEST_DB_NAME"],
-        username=app.config["ATTEST_DB_USERNAME"],
-        password=app.config["ATTEST_DB_PASSWORD"],
-        host=app.config["ATTEST_DB_HOST"],
-        port=app.config["ATTEST_DB_PORT"],
-    )
-    database_engine = database_client.engine
-    app.extensions["database_engine"] = database_engine
-    refresh_authorized_dq_numbers(authorization_csv, database_engine)
+    # Fires for unhandled exceptions raised while handling a request.
+    got_request_exception.connect(_on_request_exception, app)
 
-    set_logging_configuration()
-
-    app.register_blueprint(api_endpoints)
+    from api_endpoints import api
+    app.register_blueprint(api)
     app.add_url_rule("/metrics", "metrics", view_func=generate_latest)
 
     @app.after_request
@@ -64,7 +60,7 @@ def create_app(config_object: str = "utils.config") -> Flask:
         :return: The unmodified response.
         """
         if 500 <= response.status_code <= 599:
-            error_counter.labels(
+            http_error_counter.labels(
                 endpoint=request.path,
                 status=str(response.status_code),
             ).inc()
@@ -83,8 +79,20 @@ def create_app(config_object: str = "utils.config") -> Flask:
     return app
 
 
+def _on_request_exception(sender: Flask, exception: Exception, **extra: object) -> None:
+    """
+    Count unhandled exceptions raised during request handling.
+
+    :param sender: The Flask application that sent the signal.
+    :param exception: The unhandled exception.
+    :param **extra: Additional signal arguments (unused).
+    """
+    count_error(exception)
+
+
+# WSGI entrypoint for `gunicorn --chdir src main:app`
+app = create_app(config_object=get_config_class_path())
+
+
 if __name__ == "__main__":  # pragma: no cover
-    app = create_app()
-    app.run(
-        debug=app.config["DEBUG"],
-        host="0.0.0.0", port=int(app.config.get("PORT")))
+    app.run(debug=app.config["DEBUG"], host="0.0.0.0", port=int(app.config.get("PORT")))
