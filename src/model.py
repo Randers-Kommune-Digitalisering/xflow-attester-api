@@ -4,7 +4,7 @@ import enum
 import uuid
 
 from sqlalchemy import (BigInteger, Boolean, CheckConstraint, Column, DateTime,
-                        Enum, ForeignKey, Integer, String, UniqueConstraint,
+                        Enum, ForeignKey, Index, Integer, String, UniqueConstraint,
                         func, text)
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -139,13 +139,19 @@ class AttestationOrder(Base):
     __tablename__ = "attestation_order"
     __table_args__ = (
         UniqueConstraint("request_id", "attest_type", name="uq_attestation_order_request_type"),
+        Index(
+            "ix_attestation_order_external_order_ref",
+            "external_order_ref",
+            unique=True,
+            mssql_where=text("external_order_ref IS NOT NULL"),
+        ),
     )
     order_id = Column(String(36), primary_key=True, default=_new_uuid)
     request_id = Column(String(36), ForeignKey("attestation_request.request_id", ondelete="CASCADE"), nullable=False, index=True)
     attest_type = Column(Integer, nullable=False)
     attest_subtype = Column(Integer)
     status = Column(OrderStatusType, nullable=False, index=True)
-    external_order_ref = Column(String(255), unique=True)
+    external_order_ref = Column(String(255))
     ordered_at = Column(DateTime(timezone=True))
     request = relationship("AttestationRequest", back_populates="orders")
     received_record = relationship("ReceivedRecord", back_populates="order", uselist=False, passive_deletes="all")

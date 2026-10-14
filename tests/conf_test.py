@@ -8,9 +8,11 @@ import pytest
 import sqlalchemy
 from flask import Flask
 from flask.testing import FlaskClient
+from sqlalchemy.dialects import mssql
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.schema import CreateIndex
 
 from model import AttestationOrder, ReceivedRecord
 from utils.sftp import SFTPError
@@ -18,6 +20,18 @@ from utils.sftp import SFTPError
 os.environ.setdefault("FLASK_ENV", "dev")
 
 AUTHORIZATION_CSV = "Lokalt brugernavn;Rolle\nDQ12345;Leder\nDQ54321;Medarbejder\n"
+
+
+def test_external_order_ref_index_filters_null_on_mssql() -> None:
+    index = next(
+        index for index in AttestationOrder.__table__.indexes
+        if index.name == "ix_attestation_order_external_order_ref"
+    )
+    ddl = str(CreateIndex(index).compile(dialect=mssql.dialect()))
+
+    assert index.unique
+    assert "WHERE external_order_ref IS NOT NULL" in ddl
+    assert not AttestationOrder.__table__.c.external_order_ref.unique
 
 
 @pytest.fixture()
