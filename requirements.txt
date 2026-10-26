@@ -1,0 +1,12 @@
+Flask>=3.0.3
+python-dotenv>=1.0.0
+gunicorn>=21.2.0
+prometheus_client>=0.25.0
+SQLAlchemy>=2.0
+rk-digi>=2.2.0
+pymssql
+PyMySQL
+psycopg2-binary
+pysftp
+# pysftp imports DSSKey, which was removed in paramiko 4.0
+paramiko<4.0
