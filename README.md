@@ -3,7 +3,7 @@
 
 # Formål
 
-API der modtager attestbestillinger (straffeattest, børneattest m.fl.) fra X-Flow, validerer dem, kontrollerer at rekvirenten er leder/stedfortræder og gemmer bestillingen i databasen.
+API, der modtager attestbestillinger (straffeattest, børneattest m.fl.) fra X-Flow, validerer dem, kontrollerer at rekvirenten er leder/stedfortræder og gemmer bestillingen i databasen.
 
 ## Beskrivelse
 
@@ -15,7 +15,7 @@ flowchart LR
     APP -- autoriserede DQ-numre + bestillinger --> DB[(Database)]
 ```
 
-1. **Ved opstart** hentes `/Brugeradministration-da.csv` (semikolon-separeret, UTF-16) fra SFTP. DQ-numre med rollen *Leder* eller *Stedfortræder for leder* gemmes med deres rolle i tabellen `authorized_sagsbehandler` (listen erstattes hver gang). Kan SFTP ikke nås, starter app'en ikke.
+1. **Ved opstart** hentes `/Brugeradministration-da.csv` (semikolonsepareret, UTF-16) fra SFTP. DQ-numre med rollen *Leder* eller *Stedfortræder for leder* gemmes med deres rolle i tabellen `authorized_sagsbehandler` (listen erstattes hver gang). Kan SFTP ikke nås, starter appen ikke.
 2. **Ved modtagelse** valideres JSON, og rekvirentens DQ-nummer slås op. Der oprettes **én række** i `attestation_request` og **én række pr. bestilt attestType** i `attestation_order`, hver med en første statushændelse i `order_event` og en afventende underretning i `notification`.
 3. Bestillinger fra ikke-autoriserede rekvirenter gemmes også, men med `is_approved = false` og ordrestatus `rejected`. Der oprettes en `order_rejection` i stedet for en `order_confirmation` pr. ordre.
 
@@ -73,7 +73,7 @@ erDiagram
 | Tabel | Indhold | Felter |
 |---|---|---|
 | `authorized_sagsbehandler` | Ledere/stedfortrædere fra CSV'en | `dq_number` (PK), `role` (`leder` / `stedfortraeder for leder`) |
-| `attestation_request` | Én række pr. modtaget formular | `request_id` (PK, returneres som `requestId`), `requester_dq`, `requester_name`, `subject_cpr`, `is_approved`, `requested_at` |
+| `attestation_request` | Én række pr. modtaget formular | `request_id` (PK, returneres som `requestId`), `requester_dq`, `requester_name`, `requester_email`, `subject_cpr`, `is_approved`, `requested_at` |
 | `attestation_order` | Én række pr. bestilt attestType. Unik på (`request_id`, `attest_type`) | `order_id` (PK), `request_id` (FK), `attest_type`, `attest_subtype`, `status`, `external_order_ref`, `ordered_at` |
 | `received_record` | Modtaget attest og hvordan den er behandlet | `record_id` (PK), `order_id` (FK, unik, tom indtil matchet), `external_ref`, `received_at`, `outcome`, `processed_at`, `sbsys_sags_nr`, `sbsys_sags_id`, `sbsys_document_id` |
 | `order_event` | Logbog over statusændringer pr. ordre (der tilføjes kun rækker) | `event_id` (PK), `order_id` (FK), `status`, `occurred_at`, `actor` |
@@ -108,7 +108,7 @@ Manglende tabeller oprettes automatisk ved opstart. Eksisterende tabeller ændre
 
 ## Afhængigheder
 
-:cloud: | API'er, FTP-servere, CDN'er andre online services som applikationen kommunikerer med.
+:cloud: | API'er, FTP-servere, CDN'er og andre online services som applikationen kommunikerer med.
 
 * SFTP-server (SFTP-SDRoller) med `Brugeradministration-da.csv`
 * Database: MSSQL ([pymssql](https://pypi.org/project/pymssql/)) eller PostgreSQL ([psycopg2](https://pypi.org/project/psycopg2-binary/)) via [SQLAlchemy](https://www.sqlalchemy.org/) og `DatabaseManager` fra [rk-digi](https://github.com/Randers-Kommune-Digitalisering/rk-digi-package)
@@ -126,7 +126,7 @@ Manglende tabeller oprettes automatisk ved opstart. Eksisterende tabeller ændre
 | `ATTEST_DB_USERNAME` / `ATTEST_DB_PASSWORD` | Database login |
 | `SFTP_HOST` / `SFTP_USERNAME` | SFTP server |
 | `SFTP_HOST_KEY` | SFTP-serverens host key som `<key-type> <base64>`. Påkrævet – forbindelsen afvises ved mismatch. Se [SFTP host key](#sftp-host-key) |
-| `SFTP_PASSWORD` | SFTP kodeord – eller brug nøgle herunder |
+| `SFTP_PASSWORD` | SFTP-kodeord – eller brug nøgle herunder |
 
 ### SFTP host key
 
@@ -154,7 +154,7 @@ Verificér nøglen, før den tages i brug. `ssh-keyscan` kan selv blive udsat fo
 ssh-keyscan -t ed25519 sftp.randers.dk | ssh-keygen -lf -
 ```
 
-Hvis serverens host key udskiftes, skal `SFTP_HOST_KEY` opdateres (lokalt i `.env` og i Bitwarden/deployment-secrets), ellers starter app'en ikke.
+Hvis serverens host key udskiftes, skal `SFTP_HOST_KEY` opdateres (lokalt i `.env` og i Bitwarden/deployment-secrets), ellers starter appen ikke.
 
 ## Udvikling
 
@@ -188,9 +188,9 @@ Notering af eventuelle hard-codede værdier, og hvordan værdierne kan ændres.
     pip install -r requirements.txt -r requirements-dev.txt 
     ```
 
-3) Opret din `.env` (hvis denne mangler)
+3) Opret din `.env` (hvis den mangler)
 
-    Kopiér eksempel-filen, og redigér værdier efter behov.
+    Kopiér eksempelfilen, og redigér værdier efter behov.
 
     ```bash
     cp .env.example .env
