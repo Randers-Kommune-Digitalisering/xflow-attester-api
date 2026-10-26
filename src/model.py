@@ -127,6 +127,7 @@ class AttestationRequest(Base):
     request_id = Column(String(36), primary_key=True, default=_new_uuid)
     requester_dq = Column(String(16), nullable=False)
     requester_name = Column(String(255), nullable=False)
+    requester_email = Column(String(255), nullable=False)
     subject_cpr = Column(String(10), nullable=False)
     is_approved = Column(Boolean, nullable=False)
     requested_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
