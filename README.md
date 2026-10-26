@@ -108,7 +108,7 @@ Manglende tabeller oprettes automatisk ved opstart. Eksisterende tabeller ændre
 
 ## Afhængigheder
 
-:cloud: | API'er, FTP-servere, CDN'er og andre online services som applikationen kommunikerer med.
+:cloud: | API'er, FTP-servere, CDN'er og andre online services, som applikationen kommunikerer med.
 
 * SFTP-server (SFTP-SDRoller) med `Brugeradministration-da.csv`
 * Database: MSSQL ([pymssql](https://pypi.org/project/pymssql/)) eller PostgreSQL ([psycopg2](https://pypi.org/project/psycopg2-binary/)) via [SQLAlchemy](https://www.sqlalchemy.org/) og `DatabaseManager` fra [rk-digi](https://github.com/Randers-Kommune-Digitalisering/rk-digi-package)

@@ -192,8 +192,8 @@ class OrderEvent(Base):
     __tablename__ = "order_event"
     event_id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     order_id = Column(String(36), ForeignKey("attestation_order.order_id", ondelete="CASCADE"), nullable=False, index=True)
-    rejection_reason = Column(String(255)),
-    rejection_description = Column(String(255)),
+    rejection_reason = Column(String(255))
+    rejection_description = Column(String(255))
     status = Column(OrderStatusType, nullable=False)
     occurred_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     actor = Column(String(50), nullable=False)
